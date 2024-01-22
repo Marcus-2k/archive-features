@@ -304,3 +304,296 @@ export class ArchiveFeatures {
       });
   }
 }
+
+  public async clearSelectStore(): Promise<void> {
+    console.log("START");
+
+    // 11192 - flower store
+    // 20389 - fruit store
+
+    const clearStores: Store[] = await this.repository.find({
+      where: { id: Not(In([20389, 11192])) },
+    });
+
+    for (let idx = 0; idx < clearStores.length; idx++) {
+      const store: Store = await this.repository.findOne({
+        where: { id: clearStores[idx].id },
+        relations: { products: { variants: true }, additionalProducts: true },
+      });
+
+      console.log("DELETE ALL PRODUCTS FROM", store.name);
+      for (let i = 0; i < store.products.length; i++) {
+        for (
+          let index = 0;
+          index < store.products[i].variants.length;
+          index++
+        ) {
+          await Variant.delete({ id: store.products[i].variants[index].id });
+        }
+
+        await Product.delete({ id: store.products[i].id });
+      }
+
+      console.log("DELETE ALL ADDITIONAL PRODUCTS FROM", store.name);
+      for (let i = 0; i < store.additionalProducts.length; i++) {
+        await AdditionalProduct.delete({ id: store.additionalProducts[i].id });
+      }
+
+      console.log("FINISH IDX", idx, "/", clearStores.length);
+    }
+
+    console.log("FINISH");
+  }
+
+  public async clearMerchandise() {
+    const resultProduct = await Product.update(
+      { comercialPurpose: true },
+      { comercialPurpose: false }
+    );
+
+    console.log(resultProduct);
+
+    const resultAdditionalProduct = await AdditionalProduct.update(
+      { comercialPurpose: true },
+      { comercialPurpose: false }
+    );
+
+    console.log(resultAdditionalProduct);
+
+    const products = await Product.find({
+      where: { storeId: IsNull() },
+      relations: { variants: true },
+    });
+
+    console.log("DELETE ALL PRODUCTS FROM MERCHANDISE");
+    for (let idx = 0; idx < products.length; idx++) {
+      for (let index = 0; index < products[idx].variants.length; index++) {
+        await Variant.delete({ id: products[idx].variants[index].id });
+      }
+
+      await Product.delete({ id: products[idx].id });
+    }
+
+    const additionalProducts = await AdditionalProduct.find({
+      where: { storeId: IsNull() },
+    });
+
+    console.log("DELETE ALL ADDITIONAL PRODUCTS FROM MERCHANDISE");
+    for (let i = 0; i < additionalProducts.length; i++) {
+      await AdditionalProduct.delete({ id: additionalProducts[i].id });
+    }
+  }
+
+  public async dublicateProductToMerchandise(): Promise<void> {
+    const stores: Store[] = await this.repository.find({
+      where: { id: In([11192]) },
+      relations: {
+        products: { variants: true, categories: true },
+        additionalProducts: true,
+      },
+    });
+
+    for (let idx = 0; idx < stores.length; idx++) {
+      const store = stores[idx];
+
+      for (let i = 0; i < store.products.length; i++) {
+        const product: Product = store.products[i];
+
+        let seo: Seo | null = null;
+        if (store.seoId) {
+          const findSeo = await Seo.findOne({ where: { id: product.seoId } });
+
+          seo = await Seo.create({
+            h1: findSeo.h1,
+            title: findSeo.title,
+            keywords: findSeo.keywords,
+            description: findSeo.description,
+          }).save();
+        }
+
+        const partialProduct: Product = await Product.create({
+          storeId: null,
+          seoId: seo ? seo.id : null,
+          categories: product.categories,
+          name: product.name,
+          pictures: product.pictures,
+          keywords: [],
+          inStock: product.inStock,
+          deliverToday: product.deliverToday,
+          recommended: false,
+          comercialPurpose: true,
+          description: product.description,
+        }).save();
+
+        for (let k = 0; k < product.variants.length; k++) {
+          const variant: Variant = product.variants[k];
+
+          await Variant.create({
+            productId: partialProduct.id,
+            price: variant.price,
+            discountPrice: variant.discountPrice,
+            realPrice: variant.price,
+            realDiscountPrice: variant.discountPrice,
+          }).save();
+        }
+      }
+
+      for (let i = 0; i < store.additionalProducts.length; i++) {
+        const additional: AdditionalProduct = store.additionalProducts[i];
+
+        const partialAdditional: AdditionalProduct =
+          await AdditionalProduct.create({
+            storeId: null,
+            inStock: true,
+            comercialPurpose: true,
+            name: additional.name,
+            pictures: additional.pictures,
+            price: additional.price,
+            discountPrice: additional.discountPrice,
+            realPrice: additional.realPrice,
+            realDiscountPrice: additional.realDiscountPrice,
+            description: additional.description,
+          }).save();
+      }
+
+      console.log("FINISH", idx);
+    }
+  }
+
+  public async dublicateProductToAllStores(): Promise<any> {
+    console.log("START Dublicate Product To All Stores");
+    console.log(new Date());
+
+    const STORE_ONE: Store = await this.repository.findOne({
+      where: { id: 11192 },
+      relations: {
+        products: { variants: true, categories: true },
+        additionalProducts: true,
+      },
+    });
+
+    console.log(STORE_ONE);
+
+    const stores = await Store.findBy({
+      id: Not(
+        In([
+          3551, 20390, 20395, 20391, 11252, 20396, 20392, 20389, 12919, 11192,
+        ])
+      ),
+    });
+
+    for (let j = 0; j < stores.length; j++) {
+      const ADDITIONAL_ID: { originalId: number; newId: number }[] = [];
+
+      for (let l = 0; l < STORE_ONE.additionalProducts.length; l++) {
+        const additional = STORE_ONE.additionalProducts[l];
+        const newAdditional = await AdditionalProduct.create({
+          storeId: stores[j].id,
+          inStock: additional.inStock,
+          comercialPurpose: false,
+          name: additional.name,
+          pictures: additional.pictures,
+          price: additional.price,
+          discountPrice: additional.discountPrice,
+          realPrice: additional.price,
+          realDiscountPrice: additional.discountPrice,
+          description: additional.description,
+        } as DeepPartial<AdditionalProduct>).save();
+
+        ADDITIONAL_ID.push({
+          originalId: additional.id,
+          newId: newAdditional.id,
+        });
+      }
+      console.log(
+        "FINISH DUBLICATE ALL ADDITIONAL PRODUCTS TO STORE",
+        stores[j].name
+      );
+
+      for (let idx = 0; idx < STORE_ONE.products.length; idx++) {
+        let seo: Seo | null = null;
+        if (STORE_ONE.products[idx].seoId) {
+          const findSeo = await Seo.findOne({
+            where: { id: STORE_ONE.products[idx].seoId },
+          });
+          seo = await Seo.create({
+            h1: findSeo.h1,
+            title: findSeo.title,
+            keywords: findSeo.keywords,
+            description: findSeo.description,
+          } as DeepPartial<Seo>).save();
+        }
+
+        const newProduct = await Product.create({
+          storeId: stores[j].id,
+          seoId: seo ? seo.id : null,
+          name: STORE_ONE.products[idx].name,
+          pictures: STORE_ONE.products[idx].pictures,
+          keywords: [],
+          inStock: STORE_ONE.products[idx].inStock,
+          deliverToday: STORE_ONE.products[idx].deliverToday,
+          recommended: Math.random() < 0.5,
+          comercialPurpose: false,
+          description: STORE_ONE.products[idx].description,
+        } as DeepPartial<Product>).save();
+
+        for (let k = 0; k < STORE_ONE.products[idx].variants.length; k++) {
+          const variant = STORE_ONE.products[idx].variants[k];
+
+          await Variant.create({
+            productId: newProduct.id,
+            price: variant.price,
+            discountPrice: variant.discountPrice,
+            realPrice: variant.price,
+            realDiscountPrice: variant.discountPrice,
+          }).save();
+        }
+
+        const PRODUCT = await Product.findOne({
+          where: { id: STORE_ONE.products[idx].id },
+          relations: { additionalProducts: true },
+        });
+        STORE_ONE.products[idx].additionalProducts = PRODUCT.additionalProducts;
+        for (
+          let l = 0;
+          l < STORE_ONE.products[idx].additionalProducts.length;
+          l++
+        ) {
+          const result = await Product.createQueryBuilder("product")
+            .relation(Product, "additionalProducts")
+            .of(newProduct.id)
+            .add(
+              ADDITIONAL_ID.find(
+                (elem) =>
+                  elem.originalId ===
+                  STORE_ONE.products[idx].additionalProducts[l].id
+              ).newId
+            )
+            .catch(() => null);
+
+          if (result === null) {
+            console.log(result);
+          }
+        }
+
+        for (let l = 0; l < STORE_ONE.products[idx].categories.length; l++) {
+          const result = await Product.createQueryBuilder("product")
+            .relation(Product, "categories")
+            .of(newProduct.id)
+            .add(STORE_ONE.products[idx].categories[l].id)
+            .catch(() => null);
+          if (result === null) {
+            console.log(result);
+          }
+        }
+      }
+      console.log("FINISH DUBLICATE ALL PRODUCTS TO STORE", stores[j].name);
+
+      console.log(
+        "===================================================================================="
+      );
+    }
+
+    console.log("FINISH Dublicate Product To All Stores");
+    console.log(new Date());
+  }
