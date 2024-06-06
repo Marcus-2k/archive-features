@@ -1,4 +1,30 @@
+
+
+
+
 export class ArchiveFeatures {
+
+  public generateMialWithCoupon() {
+      if (query.type_coupon === CouponTypeEnum.DELIVERY) {
+      html = this.mailBuilderService.getMailCouponDelivery({
+        coupon_code: coupon.couponName,
+        customer_name: userName,
+      });
+    }
+    if (query.type_coupon === CouponTypeEnum.FIX_SALE) {
+      html = this.mailBuilderService.getMailCouponFixSale({
+        coupon_code: coupon.couponName,
+        customer_name: userName,
+      });
+    }
+    if (query.type_coupon === CouponTypeEnum.PERCENT_SALE) {
+      html = this.mailBuilderService.getMailCouponPercentage({
+        coupon_code: coupon.couponName,
+        customer_name: userName,
+      });
+    }
+  }
+  
   public async testCheckCorrectDublicate(): Promise<void> {
     const stores = await Store.find();
 
