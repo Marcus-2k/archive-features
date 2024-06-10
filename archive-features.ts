@@ -1,9 +1,54 @@
-
-
-
-
 export class ArchiveFeatures {
 
+  public async transferReviewsFromFile(): Promise<void> {
+    await new Promise((res, rej) => {
+      const interval = setInterval(() => {
+        res(undefined);
+        clearInterval(interval);
+      }, 20);
+    });
+
+    const reviews = RATES;
+    const stores = STORES;
+
+    for (let idx = 0; idx < stores.length; idx++) {
+      const storeHashve = stores[idx];
+
+      for (let k = 0; k < storeHashve.rate.length; k++) {
+        const StoreRate = storeHashve.rate[k];
+
+        const rate = reviews.find((item) => item._id.$oid === StoreRate.$oid);
+
+        const storeGeneral = await this.repository
+          .createQueryBuilder("store")
+          .where("(store.koraId = :id OR store.hashveId = :id)", {
+            id: storeHashve._id.$oid,
+          })
+          .getOne();
+
+        if (storeGeneral) {
+          const feedback: DeepPartial<FeedbackStore> = {
+            storeId: storeGeneral.id,
+            anonymous: false,
+            approved: rate.approved ? true : false,
+            fullName: rate.fullName,
+            rate: rate.rate,
+            feedback: rate.feedback,
+            status: rate.approved
+              ? EnumFeedbackStatus.APPROVE
+              : EnumFeedbackStatus.DECLINE,
+            createdAt: new Date(rate.createdAt.$date),
+            updatedAt: new Date(rate.updatedAt.$date),
+          };
+
+          await this.feedbackStoreRepository.create(feedback).save();
+        }
+      }
+
+      console.log("FINISH STORE IDX", idx, "/", stores.length);
+    }
+  }
+  
   public generateMialWithCoupon() {
       if (query.type_coupon === CouponTypeEnum.DELIVERY) {
       html = this.mailBuilderService.getMailCouponDelivery({
