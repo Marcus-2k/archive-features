@@ -1,5 +1,128 @@
 export class ArchiveFeatures {
 
+  public async clearSeoTable(): Promise<void> {
+    const seoList = await Seo.find();
+
+    let deleted: number = 0;
+
+    for (let idx = 0; idx < seoList.length; idx++) {
+      const seo = seoList[idx];
+
+      try {
+        const result = await Seo.delete({ id: seo.id });
+
+        if (result) {
+          deleted = deleted + 1;
+        }
+      } catch (error) {}
+
+      console.log("DELETE SEO FINISH IDX", idx, "/", seoList.length);
+    }
+
+    console.log("DELETED", deleted);
+
+    await this.createSeoForStores();
+    await this.createSeoForCategories();
+    await this.createSeoForCities();
+    await this.createSeoForProducts();
+  }
+
+  public async createSeoForStores(): Promise<void> {
+    const values = await Store.find({ where: { seoId: IsNull() } });
+
+    console.log("STORES LENGTH WITHOUT SEO", values.length);
+
+    for (let idx = 0; idx < values.length; idx++) {
+      const element = values[idx];
+
+      const seo = await Seo.create({
+        h1: { en: null, heb: null },
+        title: { en: element.name.en, heb: element.name.heb },
+        keywords: { en: null, heb: null },
+        description: {
+          en: element.description.en,
+          heb: element.description.heb,
+        },
+      }).save();
+
+      console.log("STORE FINISH IDX", idx, "/", values.length);
+
+      await Store.update({ id: element.id }, { seoId: seo.id });
+    }
+  }
+
+  public async createSeoForCategories(): Promise<void> {
+    const values = await Category.find({ where: { seoId: IsNull() } });
+
+    for (let idx = 0; idx < values.length; idx++) {
+      const element = values[idx];
+
+      const seo = await Seo.create({
+        h1: { en: null, heb: null },
+        title: { en: element.name.en, heb: element.name.heb },
+        keywords: { en: null, heb: null },
+        description: {
+          en: element.description.en,
+          heb: element.description.heb,
+        },
+      }).save();
+
+      await Category.update({ id: element.id }, { seoId: seo.id });
+
+      console.log("CATEGORY FINISH IDX", idx, "/", values.length);
+    }
+
+    console.log("CATEGORIES LENGTH WITHOUT SEO", values.length);
+  }
+
+  public async createSeoForCities(): Promise<void> {
+    const values = await City.find({ where: { seoId: IsNull() } });
+
+    for (let idx = 0; idx < values.length; idx++) {
+      const element = values[idx];
+
+      const seo = await Seo.create({
+        h1: { en: null, heb: null },
+        title: { en: element.name.en, heb: element.name.heb },
+        keywords: { en: null, heb: null },
+        description: {
+          en: element.description.en,
+          heb: element.description.heb,
+        },
+      }).save();
+
+      await City.update({ id: element.id }, { seoId: seo.id });
+
+      console.log("CITY FINISH IDX", idx, "/", values.length);
+    }
+
+    console.log("CITIES LENGTH WITHOUT SEO", values.length);
+  }
+
+  public async createSeoForProducts(): Promise<void> {
+    const values = await Product.find({ where: { seoId: IsNull() } });
+
+    for (let idx = 0; idx < values.length; idx++) {
+      const element = values[idx];
+
+      const seo = await Seo.create({
+        h1: { en: null, heb: null },
+        title: { en: element.name.en, heb: element.name.heb },
+        keywords: { en: null, heb: null },
+        description: {
+          en: element.description.en,
+          heb: element.description.heb,
+        },
+      }).save();
+
+      await Product.update({ id: element.id }, { seoId: seo.id });
+
+      console.log("PRODUCT FINISH IDX", idx, "/", values.length);
+    }
+
+    console.log("PRODUCTS LENGTH WITHOUT SEO", values.length);
+  }
+
   public async downloadDbLikeJson() {
     const products = await Product.find();
     const stores = await Store.find();
