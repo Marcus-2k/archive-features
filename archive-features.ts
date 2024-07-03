@@ -1,5 +1,29 @@
 export class ArchiveFeatures {
 
+  public async downloadDbLikeJson() {
+    const products = await Product.find();
+    const stores = await Store.find();
+    const cities = await City.find();
+    const categories = await Category.find();
+    const seo = await Seo.find();
+
+    writeFile("products.json", JSON.stringify(products, null, 2), (err) => {
+      console.log(err);
+    });
+    writeFile("stores.json", JSON.stringify(stores, null, 2), (err) => {
+      console.log(err);
+    });
+    writeFile("cities.json", JSON.stringify(cities, null, 2), (err) => {
+      console.log(err);
+    });
+    writeFile("categories.json", JSON.stringify(categories, null, 2), (err) => {
+      console.log(err);
+    });
+    writeFile("seo.json", JSON.stringify(seo, null, 2), (err) => {
+      console.log(err);
+    });
+  }
+
   public async transferReviewsFromFile(): Promise<void> {
     await new Promise((res, rej) => {
       const interval = setInterval(() => {
