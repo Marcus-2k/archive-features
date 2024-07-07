@@ -1,5 +1,105 @@
 export class ArchiveFeatures {
+  // ==========================
+  public async syncOrderEventTypes(): Promise<void> {
+    const orders = await this.repository.find({
+      where: { hashveId: Not(IsNull()), typeOfEvent: EnumTypeOfEvent.NONE },
+    });
 
+    let updatedOrder: number = 0;
+    let notUpdatedOrder: number = 0;
+    let notFind: number = 0;
+
+    for (let idx = 0; idx < orders.length; idx++) {
+      const order = orders[idx];
+
+      const oldOrder = await this.getOrderFromOldServer(order.hashveId);
+
+      if (
+        oldOrder &&
+        oldOrder.deliveryDetails &&
+        oldOrder.deliveryDetails.eventType
+      ) {
+        let newEventType: EnumTypeOfEvent = EnumTypeOfEvent.NONE;
+
+        const eventType = oldOrder.deliveryDetails.eventType;
+
+        if (eventType === "birthday") {
+          newEventType = EnumTypeOfEvent.BIRTHDAY;
+        }
+        if (eventType === "anniversary") {
+          newEventType = EnumTypeOfEvent.ANNIVERSARY;
+        }
+        if (eventType === "babyWasBorn") {
+          newEventType = EnumTypeOfEvent.CHILD_BORN;
+        }
+        if (eventType === "wedding") {
+          newEventType = EnumTypeOfEvent.BRIDAL;
+        }
+        if (eventType === "mourning") {
+          newEventType = EnumTypeOfEvent.BUT;
+        }
+        if (eventType === "thanks") {
+          newEventType = EnumTypeOfEvent.THANK;
+        }
+        if (eventType === "holiday") {
+          newEventType = EnumTypeOfEvent.HOLIDAY;
+        }
+        if (eventType === "newHouse") {
+          newEventType = EnumTypeOfEvent.NEW_HOUSE;
+        }
+        if (eventType === "newJob") {
+          newEventType = EnumTypeOfEvent.NEW_WORK;
+        }
+
+        if (newEventType !== EnumTypeOfEvent.NONE) {
+          await this.updateOrderById(order.id, { typeOfEvent: newEventType });
+
+          console.log("BEFORE", EnumTypeOfEvent[order.typeOfEvent]);
+          console.log("AFTER", EnumTypeOfEvent[newEventType]);
+
+          updatedOrder = updatedOrder + 1;
+        } else {
+          notUpdatedOrder = notUpdatedOrder + 1;
+        }
+      } else {
+        notFind = notFind + 1;
+      }
+
+      console.log("FINISH IDX", idx + 1, "/", orders.length);
+    }
+
+    console.log("     UPDATED ORDER", updatedOrder);
+    console.log(" NOT UPDATED ORDER", notUpdatedOrder);
+    console.log("NOT FIND EVENT TYPE", notFind);
+  }
+
+  private async getOrderFromOldServer(orderId: string): Promise<any> {
+    return await new Promise((res, rej) => {
+      const url = `https://backend.hashve.co.il/api/v1/order/${orderId}`;
+
+      console.log(url);
+
+      const destroy$: Subject<void> = new Subject();
+
+      this.http
+        .get(url)
+        .pipe(takeUntil(destroy$))
+        .subscribe({
+          next: (response) => {
+            res(response.data);
+          },
+          error: (error) => {
+            res(null);
+          },
+          complete: () => {
+            // console.log("COMPLETE GET ORDER FROM OLD HASHVE");
+          },
+        });
+    });
+  }
+  // ==========================
+
+  // ==========================
   public async downloadTableAsJSON() {
     await new Promise((res, rej) => {
       const interval = setInterval(() => {
@@ -34,8 +134,10 @@ export class ArchiveFeatures {
 
     console.log("FINISH TEST");
   }
+// ==========================
 
     
+// ==========================
     public async calcMinAndMaxPriceForProduct() {
     const products = await Product.createQueryBuilder("product")
       .innerJoinAndSelect("product.variants", "variant")
@@ -112,7 +214,9 @@ export class ArchiveFeatures {
       return item.price > max ? item.price : max;
     }, items[0].price);
   }
+// ==========================
   
+// ==========================
   public async clearSeoTable(): Promise<void> {
     const seoList = await Seo.find();
 
@@ -235,7 +339,9 @@ export class ArchiveFeatures {
 
     console.log("PRODUCTS LENGTH WITHOUT SEO", values.length);
   }
+// ==========================
 
+// ==========================
   public async downloadDbLikeJson() {
     const products = await Product.find();
     const stores = await Store.find();
@@ -259,6 +365,7 @@ export class ArchiveFeatures {
       console.log(err);
     });
   }
+// ==========================
 
   public async transferReviewsFromFile(): Promise<void> {
     await new Promise((res, rej) => {
