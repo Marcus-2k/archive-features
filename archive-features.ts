@@ -1,5 +1,41 @@
 export class ArchiveFeatures {
 
+  public async downloadTableAsJSON() {
+    await new Promise((res, rej) => {
+      const interval = setInterval(() => {
+        res(undefined);
+        clearInterval(interval);
+      }, 20);
+    });
+
+    console.log("START TEST");
+
+    const stores = await Store.find({ relations: { seo: true } });
+    const categories = await Category.find({ relations: { seo: true } });
+    const cities = await City.find({ relations: { seo: true } });
+    const products = await Product.find({ relations: { seo: true } });
+
+    writeFile("stores.json", JSON.stringify(stores, null, 2), (result) => {
+      console.log(result);
+    });
+    writeFile(
+      "categories.json",
+      JSON.stringify(categories, null, 2),
+      (result) => {
+        console.log(result);
+      },
+    );
+    writeFile("cities.json", JSON.stringify(cities, null, 2), (result) => {
+      console.log(result);
+    });
+    writeFile("products.json", JSON.stringify(products, null, 2), (result) => {
+      console.log(result);
+    });
+
+    console.log("FINISH TEST");
+  }
+
+    
     public async calcMinAndMaxPriceForProduct() {
     const products = await Product.createQueryBuilder("product")
       .innerJoinAndSelect("product.variants", "variant")
