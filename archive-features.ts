@@ -1,5 +1,82 @@
 export class ArchiveFeatures {
 
+    public async calcMinAndMaxPriceForProduct() {
+    const products = await Product.createQueryBuilder("product")
+      .innerJoinAndSelect("product.variants", "variant")
+      .where("(product.minPrice IS NULL OR product.maxPrice IS NULL)")
+      .getMany();
+
+    console.log("products.length", products.length);
+
+    for (let idx = 0; idx < products.length; idx++) {
+      const item = products[idx];
+
+      const minPrice: number = this.findMinPrice(item.variants);
+      const maxPrice: number = this.findMaxPrice(item.variants);
+
+      await Product.update({ id: item.id }, { minPrice, maxPrice });
+
+      console.log("FINISH IDX", idx, "/", products.length);
+    }
+
+    await this.calcMinAndMaxPriceForStore();
+  }
+
+  public async calcMinAndMaxPriceForStore() {
+    const stores = await Store.createQueryBuilder("store")
+      .innerJoinAndSelect("store.deliveryPrices", "deliveryPrice")
+      .where(
+        "(store.minDeliveryPrice IS NULL OR store.maxDeliveryPrice IS NULL)",
+      )
+      .getMany();
+
+    console.log("stores.length", stores.length);
+
+    for (let idx = 0; idx < stores.length; idx++) {
+      const item = stores[idx];
+
+      const minPrice: number = this.findMinDeliveryPrice(item.deliveryPrices);
+      const maxPrice: number = this.findMaxDeliveryPrice(item.deliveryPrices);
+
+      await Store.update(
+        { id: item.id },
+        { minDeliveryPrice: minPrice, maxDeliveryPrice: maxPrice },
+      );
+
+      console.log("FINISH IDX", idx, "/", stores.length);
+    }
+  }
+
+  public getEffectivePrice(item: Variant) {
+    return item.discountPrice !== null ? item.discountPrice : item.price;
+  }
+
+  public findMinPrice(items: Variant[]) {
+    return items.reduce((min, item) => {
+      const effectivePrice = this.getEffectivePrice(item);
+      return effectivePrice < min ? effectivePrice : min;
+    }, this.getEffectivePrice(items[0]));
+  }
+
+  public findMaxPrice(items: Variant[]) {
+    return items.reduce((max, item) => {
+      const effectivePrice = this.getEffectivePrice(item);
+      return effectivePrice > max ? effectivePrice : max;
+    }, this.getEffectivePrice(items[0]));
+  }
+
+  public findMinDeliveryPrice(items: DeliveryPrice[]) {
+    return items.reduce((min, item) => {
+      return item.price < min ? item.price : min;
+    }, items[0].price);
+  }
+
+  public findMaxDeliveryPrice(items: DeliveryPrice[]) {
+    return items.reduce((max, item) => {
+      return item.price > max ? item.price : max;
+    }, items[0].price);
+  }
+  
   public async clearSeoTable(): Promise<void> {
     const seoList = await Seo.find();
 
