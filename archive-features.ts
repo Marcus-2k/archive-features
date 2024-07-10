@@ -1,5 +1,49 @@
 export class ArchiveFeatures {
   // ==========================
+    public async recalcAverateRatingStore() {
+    await new Promise((res, rej) => {
+      const interval = setInterval(() => {
+        res(undefined);
+        clearInterval(interval);
+      }, 20);
+    });
+
+    console.log("START recalcAverateRatingStore");
+
+    const stores = await this.repository
+      .createQueryBuilder("store")
+      .leftJoinAndSelect(
+        "store.feedbacks",
+        "feedback",
+        "feedback.approved = true",
+      )
+      .getMany();
+
+    for (let idx = 0; idx < stores.length; idx++) {
+      const store = stores[idx];
+
+      let averageRating: number = 9.8;
+
+      if (store.feedbacks.length > 0) {
+        averageRating = Number(
+          (
+            store.feedbacks.reduce((acc, curr) => acc + curr.rate, 0) /
+            store.feedbacks.length
+          ).toFixed(1),
+        );
+      }
+
+      await this.repository.update(
+        { id: store.id },
+        { averageRating: averageRating },
+      );
+    }
+
+    console.log("FINISH recalcAverateRatingStore");
+  }
+  // ==========================
+  
+  // ==========================
   public async syncOrderEventTypes(): Promise<void> {
     const orders = await this.repository.find({
       where: { hashveId: Not(IsNull()), typeOfEvent: EnumTypeOfEvent.NONE },
