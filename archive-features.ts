@@ -1,5 +1,54 @@
 export class ArchiveFeatures {
   // ==========================
+
+    private async debugSortingProducts(products: Product[]) {
+    for (let idx = 0; idx < products.length; idx++) {
+      const product = products[idx];
+
+      await product.store.getDeliveryPrices();
+
+      const min_delivery_price: number = product.store.deliveryPrices.reduce(
+        (min, item) => (item.price < min ? item.price : min),
+        product.store.deliveryPrices[0].price,
+      );
+      const min_delivery_time: null | number =
+        product.store.deliveryPrices.reduce((min: number | null, item) => {
+          if (item.estimated_time === null) {
+            return min;
+          }
+          if (min === null) {
+            return item.estimated_time.from;
+          }
+          return item.estimated_time.from < min
+            ? item.estimated_time.from
+            : min;
+        }, null);
+      const thirtyDaysAgo: Date = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const is_recent: boolean = product.createdAt >= thirtyDaysAgo;
+
+      console.log(
+        "========================================",
+        idx + 1,
+        "/",
+        products.length,
+      );
+      console.log("        STORE NAME:", product.store.name.en);
+      console.log("      PRODUCT NAME:", product.name.en);
+      console.log("       RECOMMENDED:", product.recommended);
+      console.log("        BESTSELLER:", product.bestseller);
+      console.log("       NEW PRODUCT:", is_recent, product.createdAt);
+      console.log("            RATING:", product.store.averageRating);
+      console.log(" MIN PRODUCT PRICE:", product.minPrice);
+      console.log(" MAX PRODUCT PRICE:", product.maxPrice);
+      console.log(" MIN DELIVERY TIME:", min_delivery_time);
+      console.log("MIN DELIVERY PRICE:", min_delivery_price);
+    }
+    console.log("========================================");
+    console.log("            LENGTH:", products.length);
+  }
+  
+  // ==========================
     public async recalcAverateRatingStore() {
     await new Promise((res, rej) => {
       const interval = setInterval(() => {
