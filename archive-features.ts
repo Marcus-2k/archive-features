@@ -1,7 +1,57 @@
 export class ArchiveFeatures {
-  // ==========================
 
-    private async debugSortingProducts(products: Product[]) {
+  // ==========================
+  public async productLikeGoogleSchema() {
+    const products = await Product.createQueryBuilder("product")
+      .innerJoinAndSelect("product.categories", "c", "c.id = :id", { id: 110 })
+      .innerJoinAndSelect("product.variants", "variant")
+      .innerJoinAndSelect("product.store", "store")
+      .where("(product.inStock = true)")
+      .getMany();
+
+    const schemas = [];
+
+    console.log(products.length);
+
+    for (let idx = 0; idx < products.length; idx++) {
+      const product = products[idx];
+
+      product.sortVariants();
+
+      const schema = {
+        id: product.id,
+        title: product.name.heb,
+        price: product.variants[0].price + ".00 ILS",
+        condition: "new",
+        availability: "in stock",
+        brand: "HASHVE",
+        description: product.description.heb,
+        "identifier exists": "no",
+        "image link":
+          "https://backend.hashve.co.il/public/products/" + product.pictures[0],
+        link:
+          "https://hashve.co.il/" +
+          product.store.navigate_link.heb +
+          "/" +
+          product.navigate_link.heb,
+        "product type": "flowers",
+        "update type": "merge",
+      };
+
+      if (product.variants[0].discountPrice !== null) {
+        schema["sale price"] = product.variants[0].discountPrice + ".00 ILS";
+      }
+
+      schemas.push(schema);
+
+      console.log("FINISH IDX", idx + 1, "/", products.length);
+    }
+
+    fs.writeFile("schema.json", JSON.stringify(schemas, null, 2), () => {});
+  }
+
+  // ==========================
+  private async debugSortingProducts(products: Product[]) {
     for (let idx = 0; idx < products.length; idx++) {
       const product = products[idx];
 
@@ -47,7 +97,8 @@ export class ArchiveFeatures {
     console.log("========================================");
     console.log("            LENGTH:", products.length);
   }
-  
+  // ==========================
+
   // ==========================
     public async recalcAverateRatingStore() {
     await new Promise((res, rej) => {
@@ -91,7 +142,7 @@ export class ArchiveFeatures {
     console.log("FINISH recalcAverateRatingStore");
   }
   // ==========================
-  
+
   // ==========================
   public async syncOrderEventTypes(): Promise<void> {
     const orders = await this.repository.find({
